@@ -2,7 +2,7 @@ use std::ops::DerefMut;
 
 use bevy::{prelude::*, window::PrimaryWindow};
 
-use crate::drawable_material::DrawableMaterial;
+use crate::drawable::drawable_material::DrawableMaterial;
 
 #[derive(Component)]
 #[require(Transform)]
@@ -92,7 +92,7 @@ fn get_coord_from_camera(coord_x: f32, coord_z: f32) -> usize {
     const MESH_WIDTH: f32 = 10.0;
     const MESH_HEIGHT: f32 = 20.0;
 
-    const CAMERA_DIST: f32 = 5.0 / 2.0 + 27.0;
+    //const CAMERA_DIST: f32 = 5.0 / 2.0 + 27.0;
 
     const MAT_SIZE: f32 = 128.0;
 
@@ -103,13 +103,11 @@ fn get_coord_from_camera(coord_x: f32, coord_z: f32) -> usize {
     let x = x / MESH_WIDTH;
     let z = z / MESH_HEIGHT;
 
-    //
+    // convert to mat size
     let x_u = (x * MAT_SIZE) as usize;
     let z_u = (z * MAT_SIZE) as usize;
 
     let coord = 4 * (z_u * MAT_SIZE as usize + x_u);
-
-    println!("x: {x}, z: {z}");
     
     coord
 }

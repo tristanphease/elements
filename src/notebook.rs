@@ -1,6 +1,10 @@
-use bevy::{asset::RenderAssetUsages, color, prelude::*, render::render_resource::{Extent3d, TextureDimension, TextureFormat}};
+use std::time::Duration;
 
-use crate::{drawable::{Drawable, DrawableObject}, drawable_material::DrawableMaterial};
+use bevy::{color, prelude::*};
+
+use crate::drawable::{drawable_builder::BuildDrawable, Drawable, DrawableMaterial};
+
+const NOTEBOOK_PATH: &str = "models/notebook.glb";
 
 pub fn add_notebook(
     mut commands: Commands,
@@ -10,58 +14,97 @@ pub fn add_notebook(
     asset_server: Res<AssetServer>,
 ) {
     let cuboid = Cuboid::from_size(Vec3::new(10.0, 5.0, 20.0));
-    let mesh: Handle<Mesh> = meshes.add(cuboid);
+    let mesh_handle: Handle<Mesh> = meshes.add(cuboid);
 
     let material = standard_materials.add(Color::from(color::palettes::basic::GRAY));
 
     let mut notebook_entity = commands.spawn((
-        Mesh3d(mesh),
+        Mesh3d(mesh_handle.clone()),
         MeshMaterial3d(material),
         Transform::from_xyz(0.0, 0.0, 0.0),
         Drawable,
     ));
 
-    let wrapper_mesh = make_wrapper_mesh(cuboid);
-
-
-    let image = create_drawable_texture();
-    let image_handle = asset_server.add(image);
-    let material = DrawableMaterial::new(image_handle);
-
-    //wrapper for drawable
-    notebook_entity.with_child((
-        Mesh3d(meshes.add(wrapper_mesh)),
-        MeshMaterial3d(drawable_materials.add(material)),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        DrawableObject,
-    ));
+    notebook_entity.add_drawable(
+        &mesh_handle,
+        &mut meshes,
+        &mut drawable_materials,
+        &asset_server
+    );
 
 }
 
-fn make_wrapper_mesh(mesh: Cuboid) -> Cuboid {
-    let existing_size = mesh.size();
-    let new_size = existing_size + 0.01;
-    let new_mesh = Cuboid::from_size(new_size);
+pub fn add_notebook_load(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut graphs: ResMut<Assets<AnimationGraph>>,
+) {
+    commands.spawn(SceneRoot(asset_server.load(
+        GltfAssetLabel::Scene(0).from_asset(NOTEBOOK_PATH)
+    )));
 
-    return new_mesh;
+    let (graph, node_indices) = AnimationGraph::from_clips([
+        asset_server.load(GltfAssetLabel::Animation(0).from_asset(NOTEBOOK_PATH)),
+    ]);
+
+    let graph_handle = graphs.add(graph);
+    commands.insert_resource(NotebookAnimations {
+        animations: node_indices,
+        graph: graph_handle
+    });
+    // println!("{graph:?}, {node_indices:?}");
 }
 
-fn create_drawable_texture() -> Image {
+pub fn setup_notebook_animations_once_loaded(
+    mut commands: Commands,
+    animations: Res<NotebookAnimations>,
+    mut anim_players: Query<(Entity, &mut AnimationPlayer), Added<AnimationPlayer>>,
+) {
+    for (entity, mut player) in &mut anim_players {
+        let mut transitions = AnimationTransitions::new();
 
-    const TEXTURE_SIZE: usize = 128;
+        transitions
+            .play(&mut player, animations.animations[0], Duration::ZERO);
+            // .repeat();
 
-    // texture size^2
-    let texture_data = [0u8; TEXTURE_SIZE * TEXTURE_SIZE * 4];
+        commands
+            .entity(entity)
+            .insert(AnimationGraphHandle(animations.graph.clone()))
+            .insert(transitions);
+    }
+    
+}
 
-    Image::new_fill(
-        Extent3d { 
-            width: TEXTURE_SIZE as u32, 
-            height: TEXTURE_SIZE as u32, 
-            depth_or_array_layers: 1, 
-        },
-        TextureDimension::D2, 
-        &texture_data, 
-        TextureFormat::Rgba8UnormSrgb, 
-        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
-    )
+#[derive(Resource)]
+pub struct NotebookAnimations {
+    animations: Vec<AnimationNodeIndex>,
+    graph: Handle<AnimationGraph>,
+}
+
+pub fn keyboard_animation_control(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut animation_players: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
+    // animations: Res<Animations>,
+    // mut current_animation: Local<usize>,
+) {
+    for (mut player, mut transitions) in &mut animation_players {
+        let Some((&playing_animation_index, _)) = player.playing_animations().next() else {
+            continue;
+        };
+
+        if keyboard_input.just_pressed(KeyCode::Space) {
+            let playing_animation_option = player.animation_mut(playing_animation_index);
+            
+            if let Some(playing_animation) = playing_animation_option {
+                if playing_animation.is_finished() {
+                    let current_time = playing_animation.seek_time();
+                    playing_animation.replay();
+                    playing_animation.set_seek_time(current_time);
+                }
+                playing_animation.set_speed(-playing_animation.speed());
+            } else {
+
+            }
+        }
+    }
 }
