@@ -1,64 +1,45 @@
 use bevy::prelude::*;
 
-use super::{create_drawable_material, DrawableMaterial, DrawableObject};
+use super::{create_drawable_material, Drawable, DrawableMaterial, DrawableObject};
 
-pub trait BuildDrawable {
-    /// Spawns a drawable child of this entity
-    /// 
-    fn add_drawable(
-        &mut self,
-        existing_mesh_handle: &Handle<Mesh>,
-        meshes: &mut ResMut<Assets<Mesh>>,
-        drawable_materials: &mut ResMut<Assets<DrawableMaterial>>,
-        asset_server: &Res<AssetServer>,
-    ) -> &mut Self;
-}
-
-impl BuildDrawable for EntityCommands<'_> {
-    fn add_drawable(
-        &mut self,
-        existing_mesh_handle: &Handle<Mesh>,
-        meshes: &mut ResMut<Assets<Mesh>>,
-        drawable_materials: &mut ResMut<Assets<DrawableMaterial>>,
-        asset_server: &Res<AssetServer>,
-    ) -> &mut Self {
-        let existing_mesh = meshes.get(existing_mesh_handle).unwrap();
-        let (drawable_mesh, drawable_mat) = make_wrapper_objects(existing_mesh, asset_server);
-
-        let mesh3d = Mesh3d(meshes.add(drawable_mesh));
-        let mesh_material = MeshMaterial3d(drawable_materials.add(drawable_mat));
-
-        self.with_child((
-            mesh3d,
-            mesh_material,
-            Transform::from_xyz(0.0, 0.0, 0.0),
-            DrawableObject,
-        ));
-
-        self
-    }
-} 
-
-fn make_wrapper_mesh(mesh: &Mesh) -> Mesh {
-    /* let new_mesh = mesh.clone()
-        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, values); */
-    let new_mesh = mesh.clone();
-
-    new_mesh
-}
-
-fn make_wrapper_objects(
-    mesh: &Mesh,
-    asset_server: &Res<AssetServer>,
-) -> (
-    Mesh,
-    DrawableMaterial
+pub fn add_drawable_system(
+    mut commands: Commands,
+    drawable_mesh_query: Query<(&Drawable, &Mesh3d, &Transform, Entity), Added<Drawable>>,  
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut drawable_materials: ResMut<Assets<DrawableMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
-    let new_mesh = make_wrapper_mesh(mesh);
-    let new_mat = create_drawable_material(&new_mesh, asset_server);
+    for drawable in drawable_mesh_query.iter() {
 
-    (
-        new_mesh,
-        new_mat
-    )
-} 
+        let mesh = meshes.get(&drawable.1.0);
+
+        if let Some(mesh) = mesh {
+            // assume mesh is a plane
+            let new_mesh = mesh.clone();
+            let material = create_drawable_material(drawable.0.resolution(), &asset_server);
+            let new_mesh_handle = meshes.add(new_mesh);
+
+            let material_handle = drawable_materials.add(material);
+
+            let drawable_plane = commands.spawn((
+                Mesh3d(new_mesh_handle),
+                MeshMaterial3d(material_handle),
+                drawable.2.clone().with_translation(Vec3::new(0.0, 0.01, 0.0)),
+                DrawableObject,
+            )).id();
+
+            commands.entity(drawable.3)
+                .add_child(drawable_plane);
+        }
+    }
+}
+
+/* pub fn test_drawable_system(
+    world: &World,
+    drawable_mesh_query: Query<Entity, Added<Drawable>>,
+) {
+    for entity in drawable_mesh_query.iter() {
+        println!("{:#?}", world.inspect_entity(entity).collect::<Vec<_>>());
+    }
+    
+} */

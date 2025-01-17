@@ -1,10 +1,10 @@
 use bevy::{prelude::*, render::{settings::{Backends, WgpuSettings}, RenderPlugin}};
-use drawable::drawing_system;
-use drawable::DrawableMaterial;
+use drawable::DrawablePlugin;
+use hook::HookPlugin;
 use notebook::{add_notebook_load, keyboard_animation_control, setup_notebook_animations_once_loaded};
 
 mod drawable;
-
+pub mod hook;
 mod notebook;
 mod camera_controller;
 fn main() {
@@ -19,10 +19,9 @@ fn main() {
         });
 
     App::new()
-        .add_plugins((plugin, MaterialPlugin::<DrawableMaterial>::default()))
+        .add_plugins((plugin, DrawablePlugin::default(), HookPlugin))
         .add_systems(Startup, add_notebook_load)
         .add_systems(Startup, setup)
-        .add_systems(Update, drawing_system)
         .add_systems(Update, setup_notebook_animations_once_loaded)
         .add_systems(Update, keyboard_animation_control)
         .run();

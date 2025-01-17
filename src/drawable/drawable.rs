@@ -4,16 +4,33 @@ use bevy::{prelude::*, window::PrimaryWindow};
 
 use crate::drawable::drawable_material::DrawableMaterial;
 
-#[derive(Component)]
+#[derive(Component, Reflect, Debug)]
 #[require(Transform)]
-pub struct Drawable;
+pub struct Drawable {
+    resolution: usize
+}
+
+impl Drawable {
+    
+    pub fn resolution(&self) -> usize {
+        self.resolution
+    }
+}
+
+impl Default for Drawable {
+    fn default() -> Self {
+        Self { 
+            resolution: 512, 
+        }
+    }
+}
 
 /// Component for the actual drawable object itself
 #[derive(Component)]
 pub struct DrawableObject;
 
 pub fn drawing_system(
-    drawable_query: Query<&Children, With<Drawable>>,
+    drawable_query: Query<(&Children, &Drawable)>,
     mut drawable_child_query: Query<(&GlobalTransform, &mut MeshMaterial3d<DrawableMaterial>), With<DrawableObject>>,
     camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
     buttons: Res<ButtonInput<MouseButton>>,
@@ -43,7 +60,7 @@ pub fn drawing_system(
 
             let hits = ray_cast.cast_ray(ray, &ray_settings);
             for (entity, hit_info) in hits {
-                let hit_entity = drawable_query.get(*entity)
+                let (hit_entity, drawable) = drawable_query.get(*entity)
                     .expect("huh?");
 
                 for child in hit_entity.iter() {
@@ -54,15 +71,14 @@ pub fn drawing_system(
                             let image = images.get_mut(&material.draw_texture);
 
                             if let Some(image) = image {
-                                let local_coords = hit_info.point - transform.translation();
 
-                                //let mut coord = (local_coords.length() * 1000.0) as usize;
 
-                                let mut coord = get_coord_from_camera(local_coords.x, local_coords.z);
+                                let (u, v) = get_uv_from_position(hit_info.point, hit_info.normal, transform);
+
+                                let mut coord = get_coord_from_uv(-u, v, drawable.resolution());
 
                                 // round down to 4 since colour is in 4 coords for rgba
                                 coord = coord - (coord % 4);
-                                println!("coords: {local_coords:?}, coord: {coord:?}");
 
                                 for i in [0, 3] {
                                     if let Some(val) = image.data.get_mut(coord + i) {
@@ -87,28 +103,40 @@ pub fn drawing_system(
     }
 }
 
-// the coords here are world coords, converting to material coords
-fn get_coord_from_camera(coord_x: f32, coord_z: f32) -> usize {
-    const MESH_WIDTH: f32 = 10.0;
-    const MESH_HEIGHT: f32 = 20.0;
+// https://gamedev.stackexchange.com/questions/172352/finding-texture-coordinates-for-plane
+// returns between -1 and 1
+fn get_uv_from_position(position: Vec3, normal: Vec3, plane_transform: &GlobalTransform) -> (f32, f32) {
+    let mut e1 = Vec3::cross(normal, Vec3::new(1.0, 0.0, 0.0)).normalize_or_zero();
 
-    //const CAMERA_DIST: f32 = 5.0 / 2.0 + 27.0;
+    if e1 == Vec3::ZERO {
+        e1 = Vec3::cross(normal, Vec3::new(0.0, 0.0, 1.0)).normalize();
+    }
 
-    const MAT_SIZE: f32 = 128.0;
+    let e2 = Vec3::cross(normal, e1).normalize();
 
-    let x = coord_x + MESH_WIDTH / 2.0;
-    let z = -coord_z + MESH_HEIGHT / 2.0;
+    let pos = position - plane_transform.translation();
+    let plane_scale = plane_transform.scale();
 
-    // between 0-1
-    let x = x / MESH_WIDTH;
-    let z = z / MESH_HEIGHT;
+    let v = Vec3::dot(e1, pos) / plane_scale.x;
+    let u = Vec3::dot(e2, pos) / plane_scale.z;
 
-    // convert to mat size
-    let x_u = (x * MAT_SIZE) as usize;
-    let z_u = (z * MAT_SIZE) as usize;
+    // println!("pos: {pos}, u: {u}, v: {v}");
 
-    let coord = 4 * (z_u * MAT_SIZE as usize + x_u);
-    
+    (u, v)
+
+    // println!("position: {position:?}, plane position: {:?}", plane_transform.translation());
+    // println!("plane scale: {:?}", plane_transform.scale());
+}
+
+fn get_coord_from_uv(u: f32, v: f32, resolution: usize) -> usize {
+    let x = (u + 1.0) / 2.0;
+    let y = (v + 1.0) / 2.0;
+
+    let x_index = x * resolution as f32;
+    let y_index = y * resolution as f32;
+
+    let coord = 4 * (y_index as usize * resolution + x_index as usize);
+
     coord
 }
 

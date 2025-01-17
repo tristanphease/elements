@@ -1,48 +1,34 @@
+
+mod page;
+
 use std::time::Duration;
 
-use bevy::{color, prelude::*};
+use bevy::prelude::*;
 
-use crate::drawable::{drawable_builder::BuildDrawable, Drawable, DrawableMaterial};
+use crate::{drawable::Drawable, hook::{HookedSceneBundle, SceneHook}};
 
 const NOTEBOOK_PATH: &str = "models/notebook.glb";
-
-pub fn add_notebook(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut standard_materials: ResMut<Assets<StandardMaterial>>,
-    mut drawable_materials: ResMut<Assets<DrawableMaterial>>,
-    asset_server: Res<AssetServer>,
-) {
-    let cuboid = Cuboid::from_size(Vec3::new(10.0, 5.0, 20.0));
-    let mesh_handle: Handle<Mesh> = meshes.add(cuboid);
-
-    let material = standard_materials.add(Color::from(color::palettes::basic::GRAY));
-
-    let mut notebook_entity = commands.spawn((
-        Mesh3d(mesh_handle.clone()),
-        MeshMaterial3d(material),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        Drawable,
-    ));
-
-    notebook_entity.add_drawable(
-        &mesh_handle,
-        &mut meshes,
-        &mut drawable_materials,
-        &asset_server
-    );
-
-}
 
 pub fn add_notebook_load(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut graphs: ResMut<Assets<AnimationGraph>>,
 ) {
-    commands.spawn(SceneRoot(asset_server.load(
+    let scene = asset_server.load(
         GltfAssetLabel::Scene(0).from_asset(NOTEBOOK_PATH)
-    )));
+    );
+    // commands.spawn(SceneRoot(scene));
+    commands.spawn(HookedSceneBundle {
+        scene: SceneRoot(scene),
+        hook: SceneHook::new(|entity, cmds| {
+            match entity.get::<Name>().map(|t|t.as_str()) {
+                Some("page_mesh") => cmds.insert(Drawable::default()),
+                _ => cmds,
+            };
+        }),
+    });
 
+    // add animations
     let (graph, node_indices) = AnimationGraph::from_clips([
         asset_server.load(GltfAssetLabel::Animation(0).from_asset(NOTEBOOK_PATH)),
     ]);
@@ -52,7 +38,6 @@ pub fn add_notebook_load(
         animations: node_indices,
         graph: graph_handle
     });
-    // println!("{graph:?}, {node_indices:?}");
 }
 
 pub fn setup_notebook_animations_once_loaded(
@@ -60,12 +45,13 @@ pub fn setup_notebook_animations_once_loaded(
     animations: Res<NotebookAnimations>,
     mut anim_players: Query<(Entity, &mut AnimationPlayer), Added<AnimationPlayer>>,
 ) {
+    // when animation player is added, play notebook animations on the entity
     for (entity, mut player) in &mut anim_players {
         let mut transitions = AnimationTransitions::new();
 
         transitions
-            .play(&mut player, animations.animations[0], Duration::ZERO);
-            // .repeat();
+            .play(&mut player, animations.animations[0], Duration::ZERO)
+            .pause();
 
         commands
             .entity(entity)
@@ -87,7 +73,7 @@ pub fn keyboard_animation_control(
     // animations: Res<Animations>,
     // mut current_animation: Local<usize>,
 ) {
-    for (mut player, mut transitions) in &mut animation_players {
+    for (mut player, mut _transitions) in &mut animation_players {
         let Some((&playing_animation_index, _)) = player.playing_animations().next() else {
             continue;
         };
@@ -96,14 +82,15 @@ pub fn keyboard_animation_control(
             let playing_animation_option = player.animation_mut(playing_animation_index);
             
             if let Some(playing_animation) = playing_animation_option {
+                if playing_animation.is_paused() {
+                    playing_animation.resume();
+                }
                 if playing_animation.is_finished() {
                     let current_time = playing_animation.seek_time();
                     playing_animation.replay();
                     playing_animation.set_seek_time(current_time);
                 }
                 playing_animation.set_speed(-playing_animation.speed());
-            } else {
-
             }
         }
     }
