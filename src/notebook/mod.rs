@@ -1,11 +1,13 @@
-
 mod page;
 
 use std::time::Duration;
 
 use bevy::prelude::*;
 
-use crate::{drawable::Drawable, hook::{HookedSceneBundle, SceneHook}};
+use crate::{
+    drawable::Drawable,
+    hook::{HookedSceneBundle, SceneHook},
+};
 
 const NOTEBOOK_PATH: &str = "models/notebook.glb";
 
@@ -14,14 +16,12 @@ pub fn add_notebook_load(
     asset_server: Res<AssetServer>,
     mut graphs: ResMut<Assets<AnimationGraph>>,
 ) {
-    let scene = asset_server.load(
-        GltfAssetLabel::Scene(0).from_asset(NOTEBOOK_PATH)
-    );
+    let scene = asset_server.load(GltfAssetLabel::Scene(0).from_asset(NOTEBOOK_PATH));
     // commands.spawn(SceneRoot(scene));
     commands.spawn(HookedSceneBundle {
         scene: SceneRoot(scene),
         hook: SceneHook::new(|entity, cmds| {
-            match entity.get::<Name>().map(|t|t.as_str()) {
+            match entity.get::<Name>().map(|t| t.as_str()) {
                 Some("page_mesh") => cmds.insert(Drawable::default()),
                 _ => cmds,
             };
@@ -30,13 +30,13 @@ pub fn add_notebook_load(
 
     // add animations
     let (graph, node_indices) = AnimationGraph::from_clips([
-        asset_server.load(GltfAssetLabel::Animation(0).from_asset(NOTEBOOK_PATH)),
+        asset_server.load(GltfAssetLabel::Animation(0).from_asset(NOTEBOOK_PATH))
     ]);
 
     let graph_handle = graphs.add(graph);
     commands.insert_resource(NotebookAnimations {
         animations: node_indices,
-        graph: graph_handle
+        graph: graph_handle,
     });
 }
 
@@ -58,7 +58,6 @@ pub fn setup_notebook_animations_once_loaded(
             .insert(AnimationGraphHandle(animations.graph.clone()))
             .insert(transitions);
     }
-    
 }
 
 #[derive(Resource)]
@@ -80,7 +79,7 @@ pub fn keyboard_animation_control(
 
         if keyboard_input.just_pressed(KeyCode::Space) {
             let playing_animation_option = player.animation_mut(playing_animation_index);
-            
+
             if let Some(playing_animation) = playing_animation_option {
                 if playing_animation.is_paused() {
                     playing_animation.resume();

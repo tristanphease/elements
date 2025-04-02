@@ -105,7 +105,9 @@ impl SceneHook {
     /// }
     /// ```
     pub fn new<F: Fn(&EntityRef, &mut EntityCommands) + Send + Sync + 'static>(hook: F) -> Self {
-        Self { hook: Box::new(hook) }
+        Self {
+            hook: Box::new(hook),
+        }
     }
 }
 

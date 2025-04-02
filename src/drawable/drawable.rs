@@ -4,14 +4,19 @@ use bevy::{prelude::*, window::PrimaryWindow};
 
 use crate::drawable::drawable_material::DrawableMaterial;
 
+use super::paint::{
+    paint::{PaintImage, PaintSettings},
+    paint_input::PaintInput,
+};
+
+/// Component for the object
 #[derive(Component, Reflect, Debug)]
 #[require(Transform)]
 pub struct Drawable {
-    resolution: usize
+    resolution: usize,
 }
 
 impl Drawable {
-    
     pub fn resolution(&self) -> usize {
         self.resolution
     }
@@ -19,9 +24,7 @@ impl Drawable {
 
 impl Default for Drawable {
     fn default() -> Self {
-        Self { 
-            resolution: 512, 
-        }
+        Self { resolution: 1024 }
     }
 }
 
@@ -29,27 +32,28 @@ impl Default for Drawable {
 #[derive(Component)]
 pub struct DrawableObject;
 
+/// The main drawing system that handles mouse input for drawing on drawable objects
 pub fn drawing_system(
     drawable_query: Query<(&Children, &Drawable)>,
-    mut drawable_child_query: Query<(&GlobalTransform, &mut MeshMaterial3d<DrawableMaterial>), With<DrawableObject>>,
+    mut drawable_child_query: Query<
+        (&GlobalTransform, &mut MeshMaterial3d<DrawableMaterial>),
+        With<DrawableObject>,
+    >,
     camera: Single<(&Camera, &GlobalTransform), With<Camera3d>>,
     buttons: Res<ButtonInput<MouseButton>>,
     window: Single<&Window, With<PrimaryWindow>>,
     mut ray_cast: MeshRayCast,
     mut drawable_mat_assets: ResMut<Assets<DrawableMaterial>>,
     mut images: ResMut<Assets<Image>>,
+    mut paint_input: ResMut<PaintInput>,
 ) {
     let mut updated = false;
     if buttons.pressed(MouseButton::Left) {
         if let Some(mouse_position) = window.cursor_position() {
             //ray starts at camera and screen pos
-            let ray_info = ray_from_screen(
-                window.size(),
-                mouse_position,
-                *camera
-            );
+            let ray_info = ray_from_screen(window.size(), mouse_position, *camera);
             let dir = Dir3::new(ray_info.1).unwrap();
-            let ray = Ray3d::new(ray_info.0,  dir);
+            let ray = Ray3d::new(ray_info.0, dir);
 
             let drawable_entity_filter = |entity| drawable_query.contains(entity);
 
@@ -60,31 +64,48 @@ pub fn drawing_system(
 
             let hits = ray_cast.cast_ray(ray, &ray_settings);
             for (entity, hit_info) in hits {
-                let (hit_entity, drawable) = drawable_query.get(*entity)
-                    .expect("huh?");
+                let (hit_entity, drawable) = drawable_query.get(*entity).expect("huh?");
 
                 for child in hit_entity.iter() {
                     if let Ok((transform, mesh_material)) = drawable_child_query.get_mut(*child) {
                         let material_option = drawable_mat_assets.get_mut(&mesh_material.0);
-                        
+
                         if let Some(material) = material_option {
                             let image = images.get_mut(&material.draw_texture);
 
                             if let Some(image) = image {
+                                let (u, v) = get_uv_from_position(
+                                    hit_info.point,
+                                    hit_info.normal,
+                                    transform,
+                                );
 
+                                // let mut coord = get_coord_from_uv(-u, v, drawable.resolution());
 
-                                let (u, v) = get_uv_from_position(hit_info.point, hit_info.normal, transform);
+                                let (x, y) = get_coords_from_uv(-u, v, drawable.resolution());
 
-                                let mut coord = get_coord_from_uv(-u, v, drawable.resolution());
+                                // println!("x: {x}, y: {y}, u: {u}, v: {v}");
 
-                                // round down to 4 since colour is in 4 coords for rgba
-                                coord = coord - (coord % 4);
+                                //change to resource
+                                let paint_settings = PaintSettings::default();
+                                let plane_scale = transform.scale();
+                                let scale = Vec2::new(plane_scale.x, plane_scale.z);
 
-                                for i in [0, 3] {
-                                    if let Some(val) = image.data.get_mut(coord + i) {
-                                        *val = 255;
-                                    }
+                                if !paint_input.mouse_down {
+                                    image.draw_spot(x, y, &paint_settings, scale);
+                                } else if let Some(last_pos) = paint_input.last_input_location {
+                                    image.draw_thick_line(
+                                        last_pos.0,
+                                        last_pos.1,
+                                        x as usize,
+                                        y as usize,
+                                        &paint_settings,
+                                        scale,
+                                    );
                                 }
+
+                                paint_input.last_input_location = Some((x, y));
+                                paint_input.mouse_down = true;
 
                                 updated = true;
                             }
@@ -93,7 +114,10 @@ pub fn drawing_system(
                 }
             }
         }
+    } else {
+        paint_input.mouse_down = false;
     }
+
     // need to update for the change detection to work
     // https://github.com/bevyengine/bevy/issues/15595
     if updated {
@@ -105,7 +129,11 @@ pub fn drawing_system(
 
 // https://gamedev.stackexchange.com/questions/172352/finding-texture-coordinates-for-plane
 // returns between -1 and 1
-fn get_uv_from_position(position: Vec3, normal: Vec3, plane_transform: &GlobalTransform) -> (f32, f32) {
+fn get_uv_from_position(
+    position: Vec3,
+    normal: Vec3,
+    plane_transform: &GlobalTransform,
+) -> (f32, f32) {
     let mut e1 = Vec3::cross(normal, Vec3::new(1.0, 0.0, 0.0)).normalize_or_zero();
 
     if e1 == Vec3::ZERO {
@@ -128,16 +156,14 @@ fn get_uv_from_position(position: Vec3, normal: Vec3, plane_transform: &GlobalTr
     // println!("plane scale: {:?}", plane_transform.scale());
 }
 
-fn get_coord_from_uv(u: f32, v: f32, resolution: usize) -> usize {
+fn get_coords_from_uv(u: f32, v: f32, resolution: usize) -> (usize, usize) {
     let x = (u + 1.0) / 2.0;
     let y = (v + 1.0) / 2.0;
 
     let x_index = x * resolution as f32;
     let y_index = y * resolution as f32;
 
-    let coord = 4 * (y_index as usize * resolution + x_index as usize);
-
-    coord
+    (x_index as usize, y_index as usize)
 }
 
 fn ray_from_screen(

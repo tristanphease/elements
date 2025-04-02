@@ -1,22 +1,34 @@
-use bevy::{prelude::*, render::{settings::{Backends, WgpuSettings}, RenderPlugin}};
+use std::env::current_dir;
+
+use bevy::{
+    prelude::*,
+    render::{
+        settings::{Backends, WgpuSettings},
+        RenderPlugin,
+    },
+};
 use drawable::DrawablePlugin;
 use hook::HookPlugin;
-use notebook::{add_notebook_load, keyboard_animation_control, setup_notebook_animations_once_loaded};
+use notebook::{
+    add_notebook_load, keyboard_animation_control, setup_notebook_animations_once_loaded,
+};
 
+mod camera_controller;
 mod drawable;
 pub mod hook;
 mod notebook;
-mod camera_controller;
 fn main() {
-    let plugin = DefaultPlugins
-        .set(RenderPlugin {
-            render_creation: WgpuSettings {
-                // https://github.com/gfx-rs/wgpu/issues/4247
-                backends: Some(Backends::VULKAN),
-                ..default()
-            }.into(),
+    let dir = current_dir();
+    println!("{dir:?}");
+    let plugin = DefaultPlugins.set(RenderPlugin {
+        render_creation: WgpuSettings {
+            // https://github.com/gfx-rs/wgpu/issues/4247
+            backends: Some(Backends::VULKAN),
             ..default()
-        });
+        }
+        .into(),
+        ..default()
+    });
 
     App::new()
         .add_plugins((plugin, DrawablePlugin::default(), HookPlugin))
@@ -27,13 +39,10 @@ fn main() {
         .run();
 }
 
-fn setup(
-    mut commands: Commands,
-) {
+fn setup(mut commands: Commands) {
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(0.0, 50.0, 0.0)
-            .looking_at(Vec3::ZERO, Dir3::NEG_Z), //z up
+        Transform::from_xyz(0.0, 50.0, 0.0).looking_at(Vec3::ZERO, Dir3::NEG_Z), //z up
     ));
 
     // commands.spawn((
@@ -54,5 +63,4 @@ fn setup(
         },
         Transform::from_xyz(0.0, 50.0, 0.0),
     ));
-
 }
