@@ -1,7 +1,7 @@
-use std::env::current_dir;
-
 use bevy::{
     prelude::*,
+    remote::http::RemoteHttpPlugin,
+    remote::RemotePlugin,
     render::{
         settings::{Backends, WgpuSettings},
         RenderPlugin,
@@ -17,9 +17,8 @@ mod camera_controller;
 mod drawable;
 pub mod hook;
 mod notebook;
+
 fn main() {
-    let dir = current_dir();
-    println!("{dir:?}");
     let plugin = DefaultPlugins.set(RenderPlugin {
         render_creation: WgpuSettings {
             // https://github.com/gfx-rs/wgpu/issues/4247
@@ -32,6 +31,8 @@ fn main() {
 
     App::new()
         .add_plugins((plugin, DrawablePlugin::default(), HookPlugin))
+        // for debugging
+        .add_plugins((RemotePlugin::default(), RemoteHttpPlugin::default()))
         .add_systems(Startup, add_notebook_load)
         .add_systems(Startup, setup)
         .add_systems(Update, setup_notebook_animations_once_loaded)

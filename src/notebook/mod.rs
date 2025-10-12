@@ -2,7 +2,7 @@ mod page;
 
 use std::time::Duration;
 
-use bevy::prelude::*;
+use bevy::{gltf::GltfMeshName, prelude::*};
 
 use crate::{
     drawable::Drawable,
@@ -21,7 +21,7 @@ pub fn add_notebook_load(
     commands.spawn(HookedSceneBundle {
         scene: SceneRoot(scene),
         hook: SceneHook::new(|entity, cmds| {
-            match entity.get::<Name>().map(|t| t.as_str()) {
+            match entity.get::<GltfMeshName>().map(|x| x.0.as_str()) {
                 Some("page_mesh") => cmds.insert(Drawable::default()),
                 _ => cmds,
             };

@@ -57,7 +57,7 @@ pub fn drawing_system(
 
             let drawable_entity_filter = |entity| drawable_query.contains(entity);
 
-            let ray_settings = RayCastSettings::default()
+            let ray_settings = MeshRayCastSettings::default()
                 .always_early_exit()
                 .with_filter(&drawable_entity_filter)
                 .with_visibility(RayCastVisibility::Visible);
@@ -67,7 +67,7 @@ pub fn drawing_system(
                 let (hit_entity, drawable) = drawable_query.get(*entity).expect("huh?");
 
                 for child in hit_entity.iter() {
-                    if let Ok((transform, mesh_material)) = drawable_child_query.get_mut(*child) {
+                    if let Ok((transform, mesh_material)) = drawable_child_query.get_mut(child) {
                         let material_option = drawable_mat_assets.get_mut(&mesh_material.0);
 
                         if let Some(material) = material_option {
@@ -173,7 +173,7 @@ fn ray_from_screen(
 ) -> (Vec3, Vec3) {
     let coords = (cursor_pos / window_size) * 2.0 - Vec2::ONE;
 
-    let coords_world = camera.1.compute_matrix() * camera.0.clip_from_view().inverse();
+    let coords_world = camera.1.to_matrix() * camera.0.clip_from_view().inverse();
 
     // origin of ray
     let cursor_pos_world = coords_world.project_point3(coords.extend(-1.0));

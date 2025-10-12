@@ -1,7 +1,8 @@
 use bevy::{
     asset::RenderAssetUsages,
     prelude::*,
-    render::render_resource::{AsBindGroup, Extent3d, ShaderRef, TextureDimension, TextureFormat},
+    render::render_resource::{AsBindGroup, Extent3d, TextureDimension, TextureFormat},
+    shader::ShaderRef,
 };
 
 const DRAWABLE_SHADER_PATH: &str = "shaders/drawable_shader.wgsl";
