@@ -5,13 +5,16 @@ mod paint;
 
 use bevy::app::Plugin;
 use bevy::app::Update;
+use bevy::ecs::schedule::IntoScheduleConfigs;
 use bevy::pbr::MaterialPlugin;
+use bevy::state::condition::in_state;
 use drawable_builder::add_drawable_system;
 use paint::PaintPlugin;
 
 //re-export
 pub use crate::drawable::drawable::*;
 pub use crate::drawable::drawable_material::*;
+use crate::AppState;
 
 #[derive(Debug, Default)]
 pub struct DrawablePlugin {}
@@ -22,6 +25,6 @@ impl Plugin for DrawablePlugin {
         app.add_plugins(PaintPlugin::default());
 
         app.add_systems(Update, add_drawable_system);
-        app.add_systems(Update, drawing_system);
+        app.add_systems(Update, drawing_system.run_if(in_state(AppState::Playing)));
     }
 }
