@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use crate::{
+    drawable::{ClearDrawableImage, SaveDrawableImage},
     gui::{create_button, ButtonMenuComponent, GuiMenuData},
     AppState,
 };
@@ -69,12 +70,50 @@ pub(super) fn debug_menu_system(
 }
 
 // for opening debug related things
+
 #[derive(Component, Clone, Copy)]
 pub(super) struct SaveImageButton;
 
 impl ButtonMenuComponent for SaveImageButton {
     fn to_str(&self) -> &str {
         "Save Image"
+    }
+}
+
+pub(super) fn save_image_button_system(
+    interaction_query: Query<&Interaction, (With<SaveImageButton>, Changed<Interaction>)>,
+    mut save_drawable_image_writer: MessageWriter<SaveDrawableImage>,
+) {
+    for interaction in interaction_query {
+        match interaction {
+            Interaction::Pressed => {
+                save_drawable_image_writer.write(SaveDrawableImage);
+            }
+            _ => {}
+        }
+    }
+}
+
+#[derive(Component, Clone, Copy)]
+pub(super) struct ClearImageButton;
+
+impl ButtonMenuComponent for ClearImageButton {
+    fn to_str(&self) -> &str {
+        "Clear Image"
+    }
+}
+
+pub(super) fn clear_image_button_system(
+    interaction_query: Query<&Interaction, (With<ClearImageButton>, Changed<Interaction>)>,
+    mut clear_drawable_image_writer: MessageWriter<ClearDrawableImage>,
+) {
+    for interaction in interaction_query {
+        match interaction {
+            Interaction::Pressed => {
+                clear_drawable_image_writer.write(ClearDrawableImage);
+            }
+            _ => {}
+        }
     }
 }
 
@@ -91,7 +130,10 @@ pub(super) fn setup_debug_menu(mut commands: Commands, gui_menu_data: Res<GuiMen
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            children![create_button(SaveImageButton)],
+            children![
+                create_button(SaveImageButton),
+                create_button(ClearImageButton)
+            ],
         ))
         .id();
     commands

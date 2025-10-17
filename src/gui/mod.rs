@@ -4,8 +4,8 @@ use crate::{
     gui::{
         button::{button_system, create_button},
         gui_menu::{
-            close_debug_menu, debug_menu_system, gui_menu_system, setup_debug_menu, DebugMenu,
-            GuiMenu, GuiMenuState,
+            clear_image_button_system, close_debug_menu, debug_menu_system, gui_menu_system,
+            save_image_button_system, setup_debug_menu, DebugMenu, GuiMenu, GuiMenuState,
         },
         main_menu::{close_main_menu, setup_main_menu, start_button_menu_system},
     },
@@ -37,6 +37,8 @@ impl Plugin for GuiPlugin {
         app.add_systems(Startup, setup_gui);
         app.add_systems(Update, gui_menu_system);
         app.add_systems(Update, debug_menu_system);
+        app.add_systems(Update, save_image_button_system);
+        app.add_systems(Update, clear_image_button_system);
     }
 }
 

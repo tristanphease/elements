@@ -1,5 +1,3 @@
-use std::ops::DerefMut;
-
 use bevy::{prelude::*, window::PrimaryWindow};
 
 use crate::drawable::drawable_material::DrawableMaterial;
@@ -43,11 +41,12 @@ pub fn drawing_system(
     buttons: Res<ButtonInput<MouseButton>>,
     window: Single<&Window, With<PrimaryWindow>>,
     mut ray_cast: MeshRayCast,
+    // this is only mutable for change detection to work
+    // https://github.com/bevyengine/bevy/issues/15595
     mut drawable_mat_assets: ResMut<Assets<DrawableMaterial>>,
     mut images: ResMut<Assets<Image>>,
     mut paint_input: ResMut<PaintInput>,
 ) {
-    let mut updated = false;
     if buttons.pressed(MouseButton::Left) {
         if let Some(mouse_position) = window.cursor_position() {
             //ray starts at camera and screen pos
@@ -106,8 +105,6 @@ pub fn drawing_system(
 
                                 paint_input.last_input_location = Some((x, y));
                                 paint_input.mouse_down = true;
-
-                                updated = true;
                             }
                         }
                     }
@@ -116,14 +113,6 @@ pub fn drawing_system(
         }
     } else {
         paint_input.mouse_down = false;
-    }
-
-    // need to update for the change detection to work
-    // https://github.com/bevyengine/bevy/issues/15595
-    if updated {
-        for (_, mut image) in images.iter_mut() {
-            image.deref_mut();
-        }
     }
 }
 
