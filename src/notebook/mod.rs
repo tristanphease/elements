@@ -6,7 +6,7 @@ use bevy::{gltf::GltfMeshName, prelude::*};
 
 use crate::{
     drawable::Drawable,
-    hook::{HookedSceneBundle, SceneHook},
+    scene_hook::{HookedSceneBundle, SceneHook},
 };
 
 const NOTEBOOK_PATH: &str = "models/notebook.glb";

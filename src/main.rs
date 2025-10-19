@@ -2,18 +2,18 @@ use bevy::{
     prelude::*, remote::http::RemoteHttpPlugin, remote::RemotePlugin, render::RenderPlugin,
 };
 use drawable::DrawablePlugin;
-use hook::HookPlugin;
 use notebook::{
     add_notebook_load, keyboard_animation_control, setup_notebook_animations_once_loaded,
 };
+use scene_hook::HookPlugin;
 
 use crate::gui::GuiPlugin;
 
 mod camera_controller;
 mod drawable;
 mod gui;
-pub mod hook;
 mod notebook;
+pub mod scene_hook;
 
 fn main() {
     let plugin = DefaultPlugins.set(RenderPlugin::default());

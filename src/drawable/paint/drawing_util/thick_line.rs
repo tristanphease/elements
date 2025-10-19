@@ -1,3 +1,5 @@
+#![expect(dead_code)]
+
 // resource for drawing thick lines
 
 use super::{

@@ -24,10 +24,7 @@ pub fn add_drawable_system(
                 .spawn((
                     Mesh3d(new_mesh_handle),
                     MeshMaterial3d(material_handle),
-                    drawable
-                        .2
-                        .clone()
-                        .with_translation(Vec3::new(0.0, 0.01, 0.0)),
+                    drawable.2.with_translation(Vec3::new(0.0, 0.01, 0.0)),
                     DrawableObject,
                 ))
                 .id();

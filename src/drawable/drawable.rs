@@ -2,10 +2,7 @@ use bevy::{prelude::*, window::PrimaryWindow};
 
 use crate::drawable::drawable_material::DrawableMaterial;
 
-use super::paint::{
-    paint::{PaintImage, PaintSettings},
-    paint_input::PaintInput,
-};
+use super::paint::{paint_input::PaintInput, PaintImage, PaintSettings};
 
 /// Component for the object
 #[derive(Component, Reflect, Debug)]
@@ -93,11 +90,11 @@ pub fn drawing_system(
                                 if !paint_input.mouse_down {
                                     image.draw_spot(x, y, &paint_settings, scale);
                                 } else if let Some(last_pos) = paint_input.last_input_location {
-                                    image.draw_thick_line(
+                                    image.draw_thick_line_antialias(
                                         last_pos.0,
                                         last_pos.1,
-                                        x as usize,
-                                        y as usize,
+                                        x,
+                                        y,
                                         &paint_settings,
                                         scale,
                                     );

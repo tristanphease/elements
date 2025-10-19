@@ -22,12 +22,9 @@ pub(super) fn gui_menu_system(
     mut next_state: ResMut<NextState<AppState>>,
 ) {
     for interaction in interaction_query {
-        match interaction {
-            Interaction::Pressed => {
-                // open menu
-                next_state.set(AppState::Menu);
-            }
-            _ => {}
+        if *interaction == Interaction::Pressed {
+            // open menu
+            next_state.set(AppState::Menu);
         }
     }
 }
@@ -55,16 +52,13 @@ pub(super) fn debug_menu_system(
     mut next_state: ResMut<NextState<GuiMenuState>>,
 ) {
     for interaction in interaction_query {
-        match interaction {
-            Interaction::Pressed => {
-                let new_state = if *current_state.get() == GuiMenuState::Debug {
-                    GuiMenuState::Empty
-                } else {
-                    GuiMenuState::Debug
-                };
-                next_state.set(new_state);
-            }
-            _ => {}
+        if *interaction == Interaction::Pressed {
+            let new_state = if *current_state.get() == GuiMenuState::Debug {
+                GuiMenuState::Empty
+            } else {
+                GuiMenuState::Debug
+            };
+            next_state.set(new_state);
         }
     }
 }
@@ -85,11 +79,9 @@ pub(super) fn save_image_button_system(
     mut save_drawable_image_writer: MessageWriter<SaveDrawableImage>,
 ) {
     for interaction in interaction_query {
-        match interaction {
-            Interaction::Pressed => {
-                save_drawable_image_writer.write(SaveDrawableImage);
-            }
-            _ => {}
+        if *interaction == Interaction::Pressed {
+            // send message to save image
+            save_drawable_image_writer.write(SaveDrawableImage);
         }
     }
 }
@@ -108,11 +100,9 @@ pub(super) fn clear_image_button_system(
     mut clear_drawable_image_writer: MessageWriter<ClearDrawableImage>,
 ) {
     for interaction in interaction_query {
-        match interaction {
-            Interaction::Pressed => {
-                clear_drawable_image_writer.write(ClearDrawableImage);
-            }
-            _ => {}
+        if *interaction == Interaction::Pressed {
+            // send message to clear the image
+            clear_drawable_image_writer.write(ClearDrawableImage);
         }
     }
 }

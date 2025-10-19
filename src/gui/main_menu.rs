@@ -10,12 +10,9 @@ pub(super) fn start_button_menu_system(
     mut next_state: ResMut<NextState<AppState>>,
 ) {
     for interaction in interaction_query {
-        match interaction {
-            Interaction::Pressed => {
-                //
-                next_state.set(AppState::Playing);
-            }
-            _ => {}
+        if *interaction == Interaction::Pressed {
+            // start game
+            next_state.set(AppState::Playing);
         }
     }
 }
